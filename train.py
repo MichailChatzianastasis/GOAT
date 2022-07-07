@@ -21,7 +21,7 @@ import dgl
 from sklearn.metrics import f1_score
 import networkx as nx
 from utils import load_data, accuracy
-from models import GAT, GIN, SpGAT, GATorderedDeep, MLP, GATv2ConvOrdered,GATV2, GATordered, GATorderedIMP4 ,GATordered_shared_LSTM, PNA, GCN, GraphSAGE, GATRandomOrdered,GATIMP4, GATorderedIMP4_node_batching, GATorderedGraphClassification_LSTM_graph_pooling
+from models import GAT, GIN, SpGAT, GATorderedDeep, MLP, GATv2ConvOrdered,GATV2, GOAT, GOATimp4 ,GATordered_shared_LSTM, PNA, GCN, GraphSAGE, GATRandomOrdered,GATIMP4, GATorderedIMP4_node_batching, GATorderedGraphClassification_LSTM_graph_pooling
 from utils2 import load_data2,load_extra_data, load_ogbn_arxiv,load_lastfm_asia,load_disease,load_email_eu,load_amazon, load_data_adsf
 from torch_geometric.data import DataLoader
 import sys
@@ -267,7 +267,7 @@ if args.sparse:
                 alpha=args.alpha)
 else:
     if args.goat_imp4:
-        model = GATorderedIMP4(nfeat=features.shape[1], 
+        model = GOATimp4(nfeat=features.shape[1], 
                 nhid=args.hidden, 
                 nhid_2 = args.hidden_2,
                 pooling_1 = args.pooling_1,
@@ -281,7 +281,7 @@ else:
                 final_mlp=args.final_mlp)
     
     elif args.goat:
-        model = GATordered(nfeat=features.shape[1], 
+        model = GOAT(nfeat=features.shape[1], 
                 nhid=args.hidden, 
                 nhid_2 = args.hidden_2,
                 nclass=int(labels.max()) + 1, 
