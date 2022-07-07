@@ -159,7 +159,7 @@ class GATv2ConvOrdered(nn.Module):
         return F.log_softmax(x, dim=1)
 
 
-class GATordered(nn.Module):
+class GOAT(nn.Module):
     def __init__(self, nfeat, nhid, nhid_2, nclass, lstm_h1, lstm_h2, pooling_1, pooling_2, dropout, alpha, nheads=8, nheads_2=1, dataset="cora", rnn_agg="lstm"):
         """Dense version of GAT."""
         super(GATordered, self).__init__()
@@ -458,10 +458,10 @@ class GATorderedIMP4_regression(nn.Module):
 
 
 
-class GATorderedIMP4(nn.Module):
+class GOATimp4(nn.Module):
     def __init__(self, nfeat, nhid, nhid_2, pooling_1, nclass, lstm_h1, dropout, alpha,  nheads, final_mlp=False, dataset="cora",rnn_agg="lstm"):
         """Dense version of GAT."""
-        super(GATorderedIMP4, self).__init__()
+        super(GOATimp4, self).__init__()
         
         self.dropout = dropout
         self.final_mlp = final_mlp
