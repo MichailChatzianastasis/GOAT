@@ -21,7 +21,7 @@ import dgl
 from sklearn.metrics import f1_score
 import networkx as nx
 from utils import load_data, accuracy
-from models import GAT, GIN, SpGAT, GATorderedDeep, MLP, GATv2ConvOrdered,GATV2, GOAT, GOATimp4 ,GATordered_shared_LSTM, PNA, GCN, GraphSAGE, GATRandomOrdered,GATIMP4, GATorderedIMP4_node_batching, GATorderedGraphClassification_LSTM_graph_pooling
+from models import GAT, GIN, MLP ,GATV2, GOAT, PNA, GCN, GraphSAGE, GATRandomOrdered,GATIMP4
 from utils2 import load_data2,load_extra_data, load_ogbn_arxiv,load_lastfm_asia,load_disease,load_email_eu,load_amazon, load_data_adsf
 from torch_geometric.data import DataLoader
 import sys
@@ -45,12 +45,11 @@ parser.add_argument('--epochs', type=int, default=1000, help='Number of epochs t
 parser.add_argument('--lr', type=float, default=0.005, help='Initial learning rate.')
 #parser.add_argument('--lr', type=float, default=1, help='Initial learning rate.')
 parser.add_argument('--weight_decay', type=float, default=5e-4, help='Weight decay (L2 loss on parameters).')
-parser.add_argument('--hidden', type=int, default=8, help='Number of hidden units.')
+parser.add_argument('--hidden', type=int, default=32, help='Number of hidden units.')
 parser.add_argument('--nb_heads', type=int, default=1, help='Number of head attentions.')
 parser.add_argument('--dropout', type=float, default=0.5, help='Dropout rate (1 - keep probability).')
 parser.add_argument('--alpha', type=float, default=0.2, help='Alpha for the leaky_relu.')
 parser.add_argument('--patience', type=int, default=250, help='Patience')
-parser.add_argument('--goat_imp4', default=False)
 parser.add_argument('--goat', default=False)
 parser.add_argument('--rnn_agg', default="lstm", help='For GOAT --goat True')
 
@@ -251,200 +250,181 @@ if(create_edge_dict == True):
     edge_dict = {}
     for i in range(adj.shape[0]):
         edge_dict[i] = list((adj[i] > 0).nonzero().t().numpy().tolist())[0]
-       print(i,"/",adj.shape[0])
+        print(i,"/",adj.shape[0])
     with open(f'./{args.dataset}_edge_dict', 'wb') as handle:
         pickle.dump(edge_dict,handle)
     print("found edges",counter)
 
 
 # Model and optimizer
-if args.sparse:
-    model = SpGAT(nfeat=features.shape[1], 
-                nhid=args.hidden, 
-                nclass=int(labels.max()) + 1, 
-                dropout=args.dropout, 
-                nheads=args.nb_heads, 
-                alpha=args.alpha)
-else:
-    if args.goat_imp4:
-        model = GOATimp4(nfeat=features.shape[1], 
-                nhid=args.hidden, 
-                nhid_2 = args.hidden_2,
-                pooling_1 = args.pooling_1,
-                nclass=int(labels.max()) + 1, 
-                lstm_h1 = args.lstm_h1,
-                dropout=args.dropout, 
-                nheads=args.nb_heads, 
-                alpha=args.alpha,
-                dataset= args.dataset,
-                rnn_agg=args.rnn_agg,
-                final_mlp=args.final_mlp)
-    
-    elif args.goat:
-        model = GOAT(nfeat=features.shape[1], 
-                nhid=args.hidden, 
-                nhid_2 = args.hidden_2,
-                nclass=int(labels.max()) + 1, 
-                lstm_h1 = args.lstm_h1,
-                lstm_h2 = args.lstm_h2,
-                pooling_1=args.pooling_1,
-                pooling_2=args.pooling_2,
-                dropout=args.dropout, 
-                nheads=args.nb_heads, 
-                nheads_2 = args.nb_heads_2,
-                alpha=args.alpha,
-                dataset= args.dataset,
-                rnn_agg = args.rnn_agg)
 
-    elif args.v3:
-        model = GATv2ConvOrdered(nfeat=features.shape[1], 
-                nhid=args.hidden, 
-                outd_2= args.outd_2,
-                nclass=int(labels.max()) + 1, 
-                dropout=args.dropout, 
-                nheads=args.nb_heads, 
-                alpha=args.alpha,
-                dataset= args.dataset,
-                final_mlp=args.final_mlp)
-        args.edge_index = True
 
-    elif args.v2:
-        model = GATV2(nfeat=features.shape[1], 
-                nhid=args.hidden, 
-                outd_2= args.outd_2,
-                nclass=int(labels.max()) + 1, 
-                dropout=args.dropout, 
-                nheads=args.nb_heads, 
-                alpha=args.alpha,
-                dataset= args.dataset,
-                final_mlp=args.final_mlp)
-                
-        args.edge_index = True
 
-    elif args.gcn:
-        model = GCN(nfeat = features.shape[1],
-                outfeat=args.hidden,
-                outd_1=args.outd_1,
-                outd_2=args.outd_2,
-                nclass = int(labels.max()) + 1,
-                )
-        args.edge_index = True
-
-    elif args.pna:
-        if(args.dataset!="Computers" and args.dataset!="Photo"):
-            with open(f"{args.dataset}_edge_index","rb") as handle:
-                edge_index = pickle.load(handle)
-        #edge_index = find_edge_index(adj)
-        edge_index = edge_index.cpu()
-        max_degree = -1
-        d = degree(edge_index[1], num_nodes=features.shape[0], dtype=torch.long)
-        max_degree = max(max_degree, int(d.max()))
-
-        # Compute the in-degree histogram tensor
-        deg = torch.zeros(max_degree + 1, dtype=torch.long)
-        d = degree(edge_index[1], num_nodes=features.shape[0], dtype=torch.long)
-        deg += torch.bincount(d, minlength=deg.numel())
-
-        edge_index = edge_index.cuda()
-        model = PNA(nfeat = features.shape[1],
-                outfeat=args.hidden,
-                outd_1=args.outd_1,
-                outd_2=args.outd_2,
-                nclass = int(labels.max()) + 1,
-                deg = deg
-                )
-        args.edge_index = True
-        # Compute the maximum in-degree in the training data.
-        
-    elif args.gin:
-        model = GIN(nfeat = features.shape[1],
-                outfeat=args.hidden,
-                outd_1=args.outd_1,
-                outd_2=args.outd_2,
-                nclass = int(labels.max()) + 1,
-                )
-        args.edge_index = True
-    
-    elif args.sage:
-            model = GraphSAGE(nfeat = features.shape[1],
-                    outfeat=args.hidden,
-                    outd_1 = args.outd_1,
-                    outd_2 = args.outd_2,
-                    nclass = int(labels.max()) + 1,
-                    aggregator_type = args.aggregator_type
-                    )
-            args.edge_index = True
-    elif args.random:
-         model = GATRandomOrdered(nfeat = features.shape[1], 
-                nhid=args.hidden, 
-                nclass=int(labels.max()) + 1, 
-                dropout=args.dropout, 
-                nheads=args.nb_heads, 
-                final_outd=args.final_outd,
-                alpha=args.alpha,
-                dataset= args.dataset,
-                final_mlp=args.final_mlp)
-
-    elif args.shared:
-        model = GATordered_shared_LSTM(nfeat=features.shape[1], 
-        nhid=args.hidden, 
-        outd_2=args.outd_2,
-        nclass=int(labels.max()) + 1, 
-        dropout=args.dropout, 
-        nheads=args.nb_heads, 
-        alpha=args.alpha,
-        dataset= args.dataset,
-        final_mlp=args.final_mlp)
-
- 
-
-    elif args.adsf:
-        model = ADSF(nfeat=features.shape[1],
+if args.goat:
+    model = GOAT(nfeat=features.shape[1], 
             nhid=args.hidden, 
+            nhid_2 = args.hidden_2,
+            nclass=int(labels.max()) + 1, 
+            lstm_h1 = args.lstm_h1,
+            lstm_h2 = args.lstm_h2,
+            pooling_1=args.pooling_1,
+            pooling_2=args.pooling_2,
+            dropout=args.dropout, 
+            nheads=args.nb_heads, 
+            nheads_2 = args.nb_heads_2,
+            alpha=args.alpha,
+            dataset= args.dataset,
+            rnn_agg = args.rnn_agg)
+
+elif args.v3:
+    model = GATv2ConvOrdered(nfeat=features.shape[1], 
+            nhid=args.hidden, 
+            outd_2= args.outd_2,
             nclass=int(labels.max()) + 1, 
             dropout=args.dropout, 
             nheads=args.nb_heads, 
             alpha=args.alpha,
-            adj_ad=adj_ad.cuda())
+            dataset= args.dataset,
+            final_mlp=args.final_mlp)
+    args.edge_index = True
 
-    elif args.node_batch:
-        model = GATorderedIMP4_node_batching(nfeat=features.shape[1], 
+elif args.v2:
+    model = GATV2(nfeat=features.shape[1], 
+            nhid=args.hidden, 
+            outd_2= args.outd_2,
+            nclass=int(labels.max()) + 1, 
+            dropout=args.dropout, 
+            nheads=args.nb_heads, 
+            alpha=args.alpha,
+            dataset= args.dataset,
+            final_mlp=args.final_mlp)
+            
+    args.edge_index = True
+
+elif args.gcn:
+    model = GCN(nfeat = features.shape[1],
+            outfeat=args.hidden,
+            outd_1=args.outd_1,
+            outd_2=args.outd_2,
+            nclass = int(labels.max()) + 1,
+            )
+    args.edge_index = True
+
+elif args.pna:
+    if(args.dataset!="Computers" and args.dataset!="Photo"):
+        with open(f"{args.dataset}_edge_index","rb") as handle:
+            edge_index = pickle.load(handle)
+    #edge_index = find_edge_index(adj)
+    edge_index = edge_index.cpu()
+    max_degree = -1
+    d = degree(edge_index[1], num_nodes=features.shape[0], dtype=torch.long)
+    max_degree = max(max_degree, int(d.max()))
+
+    # Compute the in-degree histogram tensor
+    deg = torch.zeros(max_degree + 1, dtype=torch.long)
+    d = degree(edge_index[1], num_nodes=features.shape[0], dtype=torch.long)
+    deg += torch.bincount(d, minlength=deg.numel())
+
+    edge_index = edge_index.cuda()
+    model = PNA(nfeat = features.shape[1],
+            outfeat=args.hidden,
+            outd_1=args.outd_1,
+            outd_2=args.outd_2,
+            nclass = int(labels.max()) + 1,
+            deg = deg
+            )
+    args.edge_index = True
+    # Compute the maximum in-degree in the training data.
+    
+elif args.gin:
+    model = GIN(nfeat = features.shape[1],
+            outfeat=args.hidden,
+            outd_1=args.outd_1,
+            outd_2=args.outd_2,
+            nclass = int(labels.max()) + 1,
+            )
+    args.edge_index = True
+
+elif args.sage:
+        model = GraphSAGE(nfeat = features.shape[1],
+                outfeat=args.hidden,
+                outd_1 = args.outd_1,
+                outd_2 = args.outd_2,
+                nclass = int(labels.max()) + 1,
+                aggregator_type = args.aggregator_type
+                )
+        args.edge_index = True
+elif args.random:
+        model = GATRandomOrdered(nfeat = features.shape[1], 
+            nhid=args.hidden, 
+            nclass=int(labels.max()) + 1, 
+            dropout=args.dropout, 
+            nheads=args.nb_heads, 
+            final_outd=args.final_outd,
+            alpha=args.alpha,
+            dataset= args.dataset,
+            final_mlp=args.final_mlp)
+
+elif args.shared:
+    model = GATordered_shared_LSTM(nfeat=features.shape[1], 
+    nhid=args.hidden, 
+    outd_2=args.outd_2,
+    nclass=int(labels.max()) + 1, 
+    dropout=args.dropout, 
+    nheads=args.nb_heads, 
+    alpha=args.alpha,
+    dataset= args.dataset,
+    final_mlp=args.final_mlp)
+
+
+
+elif args.adsf:
+    model = ADSF(nfeat=features.shape[1],
+        nhid=args.hidden, 
+        nclass=int(labels.max()) + 1, 
+        dropout=args.dropout, 
+        nheads=args.nb_heads, 
+        alpha=args.alpha,
+        adj_ad=adj_ad.cuda())
+
+elif args.node_batch:
+    model = GATorderedIMP4_node_batching(nfeat=features.shape[1], 
+            nhid=args.hidden, 
+            nclass=int(labels.max()) + 1, 
+            dropout=args.dropout, 
+            nheads=args.nb_heads, 
+            final_outd=args.final_outd,
+            alpha=args.alpha,
+            dataset= args.dataset,
+            final_mlp=args.final_mlp)
+
+elif args.mlp:
+    model = MLP(nfeat = features.shape[1],
+            outfeat=args.hidden,
+            outd_1=args.hidden,
+            nclass = int(labels.max()) + 1
+            )
+    args.edge_index = True
+
+else:
+    impl4 = True
+    if(impl4):
+        model = GATIMP4(nfeat=features.shape[1], 
                 nhid=args.hidden, 
                 nclass=int(labels.max()) + 1, 
                 dropout=args.dropout, 
                 nheads=args.nb_heads, 
-                final_outd=args.final_outd,
                 alpha=args.alpha,
                 dataset= args.dataset,
                 final_mlp=args.final_mlp)
-    
-    elif args.mlp:
-        model = MLP(nfeat = features.shape[1],
-                outfeat=args.hidden,
-                outd_1=args.hidden,
-                nclass = int(labels.max()) + 1
-                )
-        args.edge_index = True
-
     else:
-        impl4 = True
-        if(impl4):
-            model = GATIMP4(nfeat=features.shape[1], 
-                    nhid=args.hidden, 
-                    nclass=int(labels.max()) + 1, 
-                    dropout=args.dropout, 
-                    nheads=args.nb_heads, 
-                    alpha=args.alpha,
-                    dataset= args.dataset,
-                    final_mlp=args.final_mlp)
-        else:
-            model = GAT(nfeat=features.shape[1], 
-                    nhid=args.hidden, 
-                    nclass=int(labels.max()) + 1, 
-                    dropout=args.dropout, 
-                    nheads=args.nb_heads, 
-                    alpha=args.alpha,
-                    dataset = args.dataset)
+        model = GAT(nfeat=features.shape[1], 
+                nhid=args.hidden, 
+                nclass=int(labels.max()) + 1, 
+                dropout=args.dropout, 
+                nheads=args.nb_heads, 
+                alpha=args.alpha,
+                dataset = args.dataset)
 
 
 
@@ -468,7 +448,7 @@ if args.cuda:
 
 features, adj, labels = Variable(features), Variable(adj), Variable(labels)
 
-if (args.goat_imp4 or impl4 or args.edge_index) and args.dataset!="ogbn-arxiv" and args.dataset!="Photo" and args.dataset!="Computers": #for ogbn-arxiv we have already edge_index
+if (impl4 or args.edge_index) and args.dataset!="ogbn-arxiv" and args.dataset!="Photo" and args.dataset!="Computers": #for ogbn-arxiv we have already edge_index
     if(args.dataset=='sbm' or args.dataset=="largest_2_neighbors"):
         edge_index = find_edge_index(adj)
     elif(os.path.isfile(f"{args.dataset}_edge_index")):
@@ -484,7 +464,7 @@ def train(epoch):
     t = time.time()
     model.train()
     optimizer.zero_grad()
-    if(args.goat_imp4 or impl4 or args.edge_index) or args.dataset =="ogbn-arxiv" or args.dataset =="Photo" or args.dataset =="Computers":
+    if(impl4 or args.edge_index) or args.dataset =="ogbn-arxiv" or args.dataset =="Photo" or args.dataset =="Computers":
         output = model(features, adj, edge_index)
     elif(args.adsf):
         output = model(features,adj,adj_ad)
@@ -503,7 +483,7 @@ def train(epoch):
         # Evaluate validation set performance separately,
         # deactivates dropout during validation run.
         model.eval()
-        if(args.goat_imp4 or impl4 or args.edge_index or args.dataset=="ogbn-arxiv"):
+        if(impl4 or args.edge_index or args.dataset=="ogbn-arxiv"):
             output = model(features, adj, edge_index)
         
         elif(args.adsf):
@@ -526,7 +506,7 @@ def train(epoch):
 
 def compute_test(write_results=True):
     model.eval()
-    if(args.goat_imp4 or impl4 or args.edge_index or args.dataset=="ogbn-arxiv"):
+    if(impl4 or args.edge_index or args.dataset=="ogbn-arxiv"):
         output = model(features, adj, edge_index)
     
     elif(args.adsf):
