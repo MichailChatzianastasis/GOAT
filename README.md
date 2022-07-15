@@ -18,10 +18,9 @@ conda env create -f environment_droplet.yml
 ```
 ## Usage
 
-We provide two implementations of GOAT model that you can run with the following commands
+To run the GOAT model use the following command
 ```
 python train.py --goat True
-python train.py --goat_imp4 True
 ```
 
 ## Contribution
