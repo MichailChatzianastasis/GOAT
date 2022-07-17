@@ -98,7 +98,7 @@ class GAT(nn.Module):
         x = F.dropout(x, self.dropout, training=self.training)
         x = torch.cat([att(x, adj,self.epoch) for att in self.attentions], dim=1)
         x = F.dropout(x, self.dropout, training=self.training)
-        x = F.elu(self.out_att(x, adj,self.epoch))
+        x = self.out_att(x, adj,self.epoch)
         return F.log_softmax(x, dim=1)
 
 
@@ -251,7 +251,7 @@ class GATV2(nn.Module):
         x = F.elu(self.attentions(x,edge_index))
         
         x = F.dropout(x, self.dropout, training=self.training)
-        x = F.elu(self.out_att(x, edge_index))
+        x = self.out_att(x, edge_index)
         return F.log_softmax(x, dim=1)
 
 
