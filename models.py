@@ -237,10 +237,10 @@ class GATV2(nn.Module):
         #self.attentions = [GOATlayer(nfeat, nhid, outd_2, dropout=dropout, alpha=alpha, concat=True, dataset=dataset) for _ in range(nheads)]
         #for i, attention in enumerate(self.attentions):
         #    self.add_module('attention_{}'.format(i), attention)
-        self.attentions=  GATConv(nfeat,nhid,heads=nheads,dropout=dropout)
+        self.attentions=  GATv2Conv(nfeat,nhid,heads=nheads,dropout=dropout)
 
         #self.out_att = GraphAttentionLayer(outd_2 * nheads, nclass, dropout=dropout, alpha=alpha, concat=False , dataset=dataset)
-        self.out_att=  GATConv(nheads*nhid,nclass,heads=1,dropout=dropout)
+        self.out_att=  GATv2Conv(nheads*nhid,nclass,heads=1,dropout=dropout)
 
     def forward(self, x, adj, edge_index):
         if(self.training):
