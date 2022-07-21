@@ -44,7 +44,7 @@ def load_data(path="./data/cora/", dataset="cora"):
     # build symmetric adjacency matrix
     adj = adj + adj.T.multiply(adj.T > adj) - adj.multiply(adj.T > adj)
 
-    features = normalize_features(features)
+    #features = normalize_features(features)
     adj = normalize_adj(adj + sp.eye(adj.shape[0]))
 
     idx_train = range(140)
