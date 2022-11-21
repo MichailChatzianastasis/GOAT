@@ -21,4 +21,9 @@ We provide two implementations of GOAT model that you can run with the following
 python train.py --goat True
 python train.py --goat_imp4 True
 ```
+## Contribution
+- Michail Chatzianastasis (mixalisx97@gmail.com)
+- Johannes F.Lutzeyer
+- George Dasoulas
+- Michalis Vazirgiannis 
 
