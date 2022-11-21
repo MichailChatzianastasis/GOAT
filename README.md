@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) 
 
 This repository is an implementation of "Graph Ordering Attention Networks"
-
+![](./figures/goat_model_fig.jpg)
  
 
 ## Abstract
