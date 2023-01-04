@@ -21,7 +21,7 @@ import dgl
 from sklearn.metrics import f1_score
 import networkx as nx
 from utils import load_data, accuracy
-from models import GAT, GIN, SpGAT, GATorderedDeep, MLP, GATv2ConvOrdered,GATV2, GATordered, GATorderedIMP4 ,GATordered_shared_LSTM, PNA, GCN, GraphSAGE, GATRandomOrdered,GATIMP4, GATorderedIMP4_node_batching, GATorderedGraphClassification_LSTM_graph_pooling
+from models import GAT, GIN, SpGAT , MLP ,GATV2, GOAT, GOAT_IMP4 , PNA, GCN, GraphSAGE ,GATIMP4
 from utils2 import load_data2,load_extra_data, load_ogbn_arxiv,load_lastfm_asia,load_disease,load_email_eu,load_amazon, load_data_adsf
 from torch_geometric.data import DataLoader
 import sys
@@ -43,7 +43,6 @@ parser.add_argument('--sparse', action='store_true', default=False, help='GAT wi
 parser.add_argument('--seed', type=int, default=72, help='Random seed.')
 parser.add_argument('--epochs', type=int, default=1000, help='Number of epochs to train.')
 parser.add_argument('--lr', type=float, default=0.005, help='Initial learning rate.')
-#parser.add_argument('--lr', type=float, default=1, help='Initial learning rate.')
 parser.add_argument('--weight_decay', type=float, default=5e-4, help='Weight decay (L2 loss on parameters).')
 parser.add_argument('--hidden', type=int, default=8, help='Number of hidden units.')
 parser.add_argument('--nb_heads', type=int, default=1, help='Number of head attentions.')
@@ -54,12 +53,9 @@ parser.add_argument('--goat_imp4', default=False)
 parser.add_argument('--goat', default=False)
 parser.add_argument('--rnn_agg', default="lstm", help='For GOAT --goat True')
 
-parser.add_argument('--v2', default=False)
-parser.add_argument('--v3', default=False)
 
 parser.add_argument('--gcn', default=False)
 parser.add_argument('--sage', default=False)
-parser.add_argument('--adsf', default=False)
 
 parser.add_argument('--mlp', default=False)
 parser.add_argument('--gin', default=False)
@@ -151,19 +147,11 @@ def spy_sparse2torch_sparse(data):
 
 # Load data
 if(args.dataset == "cora"): 
-    if(args.adsf):
-        adj, features,  idx_train, idx_val, idx_test, labels, adj_ad = load_data_adsf("cora")
-        adj_ad = adj_ad.cuda()
-    else:
-        adj, features, labels, idx_train, idx_val, idx_test = load_data()
+    adj, features, labels, idx_train, idx_val, idx_test = load_data()
 
 
 elif(args.dataset == "citeseer"):
     #adj, features, labels, idx_train, idx_val, idx_test = load_data("./data/citeseer/","citeseer")
-    if(args.adsf):
-        adj, features,  idx_train, idx_val, idx_test, labels, adj_ad = load_data_adsf("citeseer")
-        adj_ad = adj_ad.cuda()
-    
     adj, features, labels, idx_train, idx_val, idx_test = load_data2("citeseer")
     
 
@@ -284,12 +272,11 @@ if args.sparse:
                 alpha=args.alpha)
 else:
     if args.goat_imp4:
-        model = GATorderedIMP4(nfeat=features.shape[1], 
+        model = GOAT_IMP4(nfeat=features.shape[1], 
                 nhid=args.hidden, 
                 nhid_2 = args.hidden_2,
                 pooling_1 = args.pooling_1,
                 nclass=int(labels.max()) + 1, 
-                lstm_h1 = args.lstm_h1,
                 dropout=args.dropout, 
                 nheads=args.nb_heads, 
                 alpha=args.alpha,
@@ -298,7 +285,7 @@ else:
                 final_mlp=args.final_mlp)
     
     elif args.goat:
-        model = GATordered(nfeat=features.shape[1], 
+        model = GOAT(nfeat=features.shape[1], 
                 nhid=args.hidden, 
                 nhid_2 = args.hidden_2,
                 nclass=int(labels.max()) + 1, 
@@ -312,31 +299,6 @@ else:
                 alpha=args.alpha,
                 dataset= args.dataset,
                 rnn_agg = args.rnn_agg)
-
-    elif args.v3:
-        model = GATv2ConvOrdered(nfeat=features.shape[1], 
-                nhid=args.hidden, 
-                outd_2= args.outd_2,
-                nclass=int(labels.max()) + 1, 
-                dropout=args.dropout, 
-                nheads=args.nb_heads, 
-                alpha=args.alpha,
-                dataset= args.dataset,
-                final_mlp=args.final_mlp)
-        args.edge_index = True
-
-    elif args.v2:
-        model = GATV2(nfeat=features.shape[1], 
-                nhid=args.hidden, 
-                outd_2= args.outd_2,
-                nclass=int(labels.max()) + 1, 
-                dropout=args.dropout, 
-                nheads=args.nb_heads, 
-                alpha=args.alpha,
-                dataset= args.dataset,
-                final_mlp=args.final_mlp)
-                
-        args.edge_index = True
 
     elif args.gcn:
         model = GCN(nfeat = features.shape[1],
@@ -401,28 +363,6 @@ else:
                 alpha=args.alpha,
                 dataset= args.dataset,
                 final_mlp=args.final_mlp)
-
-    elif args.shared:
-        model = GATordered_shared_LSTM(nfeat=features.shape[1], 
-        nhid=args.hidden, 
-        outd_2=args.outd_2,
-        nclass=int(labels.max()) + 1, 
-        dropout=args.dropout, 
-        nheads=args.nb_heads, 
-        alpha=args.alpha,
-        dataset= args.dataset,
-        final_mlp=args.final_mlp)
-
- 
-
-    elif args.adsf:
-        model = ADSF(nfeat=features.shape[1],
-            nhid=args.hidden, 
-            nclass=int(labels.max()) + 1, 
-            dropout=args.dropout, 
-            nheads=args.nb_heads, 
-            alpha=args.alpha,
-            adj_ad=adj_ad.cuda())
 
     elif args.node_batch:
         model = GATorderedIMP4_node_batching(nfeat=features.shape[1], 
@@ -503,8 +443,6 @@ def train(epoch):
     optimizer.zero_grad()
     if(args.goat_imp4 or impl4 or args.edge_index) or args.dataset =="ogbn-arxiv" or args.dataset =="Photo" or args.dataset =="Computers":
         output = model(features, adj, edge_index)
-    elif(args.adsf):
-        output = model(features,adj,adj_ad)
     else:
         output = model(features,adj)
     #g = make_dot(output, model.state_dict())
@@ -522,10 +460,7 @@ def train(epoch):
         model.eval()
         if(args.goat_imp4 or impl4 or args.edge_index or args.dataset=="ogbn-arxiv"):
             output = model(features, adj, edge_index)
-        
-        elif(args.adsf):
-            output = model(features,adj,adj_ad)
-        
+
         else:
             output = model(features,adj)
         
@@ -545,10 +480,7 @@ def compute_test(write_results=True):
     model.eval()
     if(args.goat_imp4 or impl4 or args.edge_index or args.dataset=="ogbn-arxiv"):
         output = model(features, adj, edge_index)
-    
-    elif(args.adsf):
-        output = model(features,adj,adj_ad)
-    
+
     else:
         output = model(features,adj)
     loss_test = F.nll_loss(output[idx_test], labels[idx_test])
