@@ -2,7 +2,7 @@
 [![made-with-python](https://img.shields.io/badge/Made%20with-Python-red.svg)](#python)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) 
 
-This repository is the original implementation of the paper titled [Graph Ordering Attention Networks](https://arxiv.org/abs/2204.05351), accepted at AAAI2023.
+This repository is the original implementation of the paper titled [Graph Ordering Attention Networks](https://arxiv.org/abs/2204.05351), accepted at AAAI 2023.
 ![](./figures/goat_model_fig.jpg)
  
 
